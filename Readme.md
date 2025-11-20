@@ -113,7 +113,7 @@ Alur analisis terdiri dari:
 
 Berikut adalah diagram alir proses analisis pemodelan stokastik:
 
-![Diagram Alir Analisis](gambar/FLOWCHART.png)
+![Diagram Alir Analisis](FLOWCHART.png)
 
 ---
 ### **2. Estimasi λ per Kondisi**
