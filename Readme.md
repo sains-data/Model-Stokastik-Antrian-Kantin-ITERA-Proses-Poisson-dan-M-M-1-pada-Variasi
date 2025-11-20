@@ -202,16 +202,7 @@ Dari grafik λ(t):
 
 ---
 
-## 🧠 Cara Menjalankan Analisis
 
-1. Clone repository
-2. Jalankan skrip:
-
-```r
-source("R/model_poisson_mm1.R")
-```
-
----
 
 ## ✨ Tentang Proyek Ini
 
