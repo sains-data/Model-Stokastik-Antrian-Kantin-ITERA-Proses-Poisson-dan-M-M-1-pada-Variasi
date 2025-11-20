@@ -8,7 +8,7 @@ Penelitian ini menganalisis antrian Kantin Rumah Kayu ITERA dengan Proses Poisso
 * **Birth–Death / M/M/1**
 * Insight kebijakan yang bisa “dijual” ke institusi.
 
-Saya mulai dari `df` yang sudah kamu buat.
+Saya mulai dari `df` yang sudah di buat.
 
 ---
 
@@ -17,7 +17,7 @@ Saya mulai dari `df` yang sudah kamu buat.
 ```r
 library(tidyverse)
 
-# Data hasil observasi (sudah kamu buat)
+# Data hasil observasi (sudah di buat)
 df <- tribble(
   ~Tanggal, ~Slot_Waktu, ~Jumlah, ~Kondisi,
   "2025-11-11","11.50 - 11.55",6,"Tidak Hujan",
