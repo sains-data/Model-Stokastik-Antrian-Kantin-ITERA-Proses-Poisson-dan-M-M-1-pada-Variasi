@@ -113,7 +113,7 @@ Alur analisis terdiri dari:
 
 Berikut adalah diagram alir proses analisis pemodelan stokastik:
 
-![Diagram Alir Analisis](gambar/FLOWCHART.png)
+![Diagram Alir Analisis](FLOWCHART.png)
 
 ---
 ### **2. Estimasi λ per Kondisi**
@@ -202,16 +202,7 @@ Dari grafik λ(t):
 
 ---
 
-## 🧠 Cara Menjalankan Analisis
 
-1. Clone repository
-2. Jalankan skrip:
-
-```r
-source("R/model_poisson_mm1.R")
-```
-
----
 
 ## ✨ Tentang Proyek Ini
 
