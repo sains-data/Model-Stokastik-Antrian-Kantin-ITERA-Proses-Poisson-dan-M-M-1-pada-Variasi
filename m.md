@@ -1,3 +1,4 @@
+````markdown
 # Model Stokastik Antrian Kantin ITERA: Proses Poisson dan M/M/2 pada Variasi Cuaca
 
 Repository ini berisi analisis sistem antrian di Kantin Rumah Kayu ITERA menggunakan **pemodelan stokastik**. Kedatangan pelanggan dimodelkan sebagai **Proses Poisson**, sedangkan sistem layanan dimodelkan sebagai **antrian M/M/2** (dua kasir aktif, masing-masing rata-rata 1 menit per transaksi ≈ 60 pelanggan/jam). Data observasi dicatat per **slot 5 menit** pada jam makan siang, untuk dua kondisi cuaca: **hujan** dan **tidak hujan**.
@@ -183,3 +184,37 @@ Ringkasan:
 │   └── diagram_alir_analisis.png       # diagram alir penelitian
 │
 └── README.md
+````
+
+---
+
+## 7. Cara Menjalankan Kode
+
+1. Kloning repository:
+
+```bash
+git clone https://github.com/username/antrian-kantin-itera.git
+cd antrian-kantin-itera
+```
+
+2. Buka R / RStudio dan jalankan:
+
+```r
+source("R/analisis_poisson_mm2.R")
+```
+
+Script akan:
+
+* memuat data observasi,
+* menghitung λ per hari dan per kondisi cuaca,
+* menghitung metrik antrian M/M/2,
+* menyimpan grafik ke folder `gambar/`,
+* dan menampilkan ringkasan hasil di console.
+
+
+
+## 8. Tentang Proyek
+
+Analisis ini disusun sebagai bagian dari **Tugas Besar Mata Kuliah Pemodelan Stokastik** Program Studi Sains Data ITERA. Proyek ini menunjukkan bagaimana teori Proses Poisson dan model antrian M/M/c dapat diterapkan pada kasus nyata di lingkungan kampus, serta bagaimana hasilnya dapat diterjemahkan menjadi rekomendasi kebijakan operasional yang konkret bagi pengelola kantin dan pimpinan institusi.
+
+
