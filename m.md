@@ -50,7 +50,7 @@ Tersedia dalam folder `/gambar/diagram_alir_analisis.png`
 #  **Struktur Repository**
 
 ```text
-📦 antrian-kantin-itera/
+  antrian-kantin-itera/
 │
 ├── data/
 │   └── data_kantin_per5menit.csv
@@ -72,7 +72,7 @@ Tersedia dalam folder `/gambar/diagram_alir_analisis.png`
 
 ---
 
-# 📊 **Ringkasan Hasil Utama**
+#  **Ringkasan Hasil Utama**
 
 ## **1. Total Pelanggan per Hari (Data Agregat)**
 
