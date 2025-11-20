@@ -109,7 +109,13 @@ Alur analisis terdiri dari:
 | 2025-11-19 | Tidak hujan | 115   |
 
 ---
+## 🔄 Diagram Alir Analisis
 
+Berikut adalah diagram alir proses analisis pemodelan stokastik:
+
+![Diagram Alir Analisis](gambar/FLOWCHART.png)
+
+---
 ### **2. Estimasi λ per Kondisi**
 
 | Kondisi     | λ_mean | λ_sd  |
