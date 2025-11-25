@@ -1,90 +1,153 @@
-# 📊 Model Stokastik Antrian Kantin ITERA
+📊 Analisis dan Optimasi Antrian Kantin Rumah Kayu dengan Pemodelan Stokastik Proses Poisson dan M/M/2 
 
-### **Proses Poisson & M/M/1 pada Variasi Cuaca**
+Proses Poisson dan M/M/2 pada Variasi Cuaca
 
-Repository ini berisi analisis lengkap menggunakan **Proses Poisson** dan **Model Antrian M/M/1** untuk memodelkan perilaku kedatangan dan layanan pelanggan di **Kantin Rumah Kayu ITERA**. Data diperoleh dari observasi nyata per 5 menit, dengan membandingkan **kondisi hujan** dan **tidak hujan**.
-Analisis ini menghasilkan estimasi laju kedatangan, variabilitas antar slot waktu, kestabilan sistem, hingga rekomendasi strategis untuk peningkatan layanan kantin.
+Repository ini berisi analisis lengkap menggunakan Proses Poisson dan Model Antrian M/M/2 untuk memodelkan perilaku kedatangan dan layanan pelanggan di Kantin Rumah Kayu ITERA. Data diperoleh dari observasi nyata per 5 menit, dengan membandingkan kondisi hujan dan tidak hujan.
 
----
+Di lapangan terdapat 2 kasir aktif, namun sering terjadi antrian tidak beraturan atau bergerombol, sehingga kapasitas layanan efektif menjadi jauh lebih rendah dibanding kapasitas teoritis. Hal ini menyebabkan kemacetan walaupun server sudah dua.
 
-## 🚀 Fitur Utama
+Analisis ini menghasilkan estimasi laju kedatangan, variabilitas slot waktu, tingkat stabilitas sistem, hingga rekomendasi peningkatan layanan kantin.
 
-### **📈 Estimasi Laju Kedatangan (λ) menggunakan Proses Poisson**
-
-* Rata-rata pelanggan/jam (λ):
-
-  * Tidak Hujan: **119 pelanggan/jam**
-  * Hujan: **83 pelanggan/jam**
-* Penurunan akibat hujan: **–30.25%**
-
-### **🧪 Uji Variabilitas Slot Waktu**
-
-* Menghitung **mean dan varians per slot** (12 slot × 5 menit)
-* Rasio var/mean sebagai indikator:
-
-  * Hujan: **3.35** → Overdispersion tinggi
-  * Tidak hujan: **0.94** → Variabilitas rendah
-* Artinya: **hujan membuat kedatangan lebih tidak stabil**
-
-### **📊 Profil λ(t) per Slot**
-
-Grafik menunjukkan slot mana yang “meledak” atau drop drastis.
-Contoh hasil:
-
-* Slot hujan paling padat: slot pertama (**15 pelanggan**)
-* Slot tidak hujan paling padat: slot ke-4–7 (**10–12 pelanggan**)
-
-*(gambar disimpan sebagai `gambar/lambda_per_slot.png`)*
-
-### **🔧 Analisis Kestabilan Sistem M/M/1**
-
-Asumsi μ (pelayanan kasir) = 30 pelanggan/jam → **sistem tidak stabil (ρ > 1)**
-Output:
-
-| Kondisi     | λ   | μ  | ρ   | Stabil?        |
-| ----------- | --- | -- | --- | -------------- |
-| Tidak hujan | 119 | 30 | > 1 | ❌ Tidak stabil |
-| Hujan       | 83  | 30 | > 1 | ❌ Tidak stabil |
-
-### **📉 Penentuan μ Minimum Agar Queue Stabil**
-
-Agar **Wq ≤ 5 menit**, diperlukan:
-
-* μ ≈ **130 pelanggan/jam**
-* Ini ≈ **4–5 kasir** jika tiap kasir melayani 30 pelanggan/jam
-
-Grafik Wq vs μ disertakan:
-*(gambar: `gambar/kurva_wq_vs_mu.png`)*
 
 ---
 
-## 🔄 Diagram Alir Analisis Pemodelan Stokastik
+🚀 Fitur Utama
 
-Alur analisis terdiri dari:
+📈 Estimasi Laju Kedatangan (λ) menggunakan Proses Poisson
 
-1. **Input data observasi 5 menit**
-2. **Agregasi per hari & per slot**
-3. **Estimasi λ (Poisson)**
-4. **Analisis var/mean (stabilitas proses)**
-5. **Menghitung λ(t) per slot**
-6. **Evaluasi kestabilan M/M/1**
-7. **Simulasi kapasitas kasir (μ)**
-8. **Rekomendasi operasional**
+Rata-rata pelanggan/jam (λ):
 
-*(gambar disimpan sebagai `gambar/diagram_alir.png`)*
+Tidak Hujan: 119 pelanggan/jam
+
+Hujan: 83 pelanggan/jam
+
+
+
+Penurunan karena hujan: –30.25%
+
 
 ---
 
-## 📁 Struktur Repository
+🧪 Uji Variabilitas Slot Waktu
 
-```
+Menghitung mean dan varians untuk 12 slot (5 menit)
+
+Rasio var/mean sebagai indikator stabilitas proses
+
+
+Kondisi	Rasio var/mean	Makna
+
+Hujan	3.35	Overdispersion tinggi dan kedatangan sulit diprediksi
+Tidak hujan	0.94	Stabil dan mendekati Poisson murni
+
+
+
+---
+
+📊 Profil λ(t) per Slot
+
+Contoh hasil utama:
+
+Slot hujan paling padat: slot pertama (15 pelanggan)
+
+Slot tidak hujan paling padat: slot ke-4 sampai 7 (10–12 pelanggan)
+
+
+(Gambar disimpan sebagai gambar/lambda_per_slot.png)
+
+
+---
+
+🔧 Analisis Kestabilan Sistem M/M/2
+
+Asumsi layanan
+
+Observasi lapangan: ada 2 kasir aktif
+
+Estimasi kapasitas layanan per kasir ≈ 30 pelanggan/jam
+
+Total μ sistem = 60 pelanggan/jam
+
+
+Dampaknya:
+
+Kondisi	λ	μ_total	ρ	Stabil?
+
+Tidak hujan	119	60	1.98	❌ Tidak stabil
+Hujan	83	60	1.38	❌ Tidak stabil
+
+
+Walaupun ada 2 kasir, sistem tetap tidak stabil karena:
+
+λ jauh lebih besar dari μ
+
+Mahasiswa sering antri bergerombol sehingga service discipline menjadi kacau
+
+Efisiensi kasir turun karena antrian tidak terbentuk dalam satu barisan yang rapi
+
+
+
+---
+
+📉 Penentuan μ Minimum Agar Sistem Stabil
+
+Tujuan: Wq ≤ 5 menit
+
+Hasil perhitungan:
+
+Dibutuhkan μ_total ≈ 130 pelanggan/jam
+
+Jika satu kasir ≈ 30 pelanggan/jam
+→ Dibutuhkan 4 sampai 5 kasir
+→ atau 2 kasir + jalur cepat + order online/pickup
+
+
+(Gambar: gambar/kurva_wq_vs_mu.png)
+
+
+---
+
+🔄 Diagram Alir Analisis Pemodelan
+
+1. Input data observasi 5 menit
+
+
+2. Agregasi per hari dan per slot
+
+
+3. Estimasi λ (Poisson)
+
+
+4. Analisis var/mean
+
+
+5. Estimasi λ(t) per slot
+
+
+6. Evaluasi M/M/2 (stabilitas 2 kasir)
+
+
+7. Simulasi tambahan μ
+
+
+8. Rekomendasi operasional
+
+
+
+(Gambar: gambar/diagram_alir.png)
+
+
+---
+
+📁 Struktur Repository
+
 📦 antrian-kantin-itera/
 │
 ├── data/
 │   └── data_kantin_observasi.csv
 │
 ├── R/
-│   └── model_poisson_mm1.R
+│   └── model_poisson_mm2.R     (sudah menyesuaikan 2 kasir)
 │
 ├── gambar/
 │   ├── lambda_per_slot.png
@@ -92,119 +155,146 @@ Alur analisis terdiri dari:
 │   └── diagram_alir.png
 │
 └── README.md
-```
+
 
 ---
 
-## 🔍 Ringkasan Hasil Utama
+🔍 Ringkasan Hasil Utama
 
-### **1. Ringkasan Total Pelanggan per Hari**
+1. Total Pelanggan per Hari
 
-| Tanggal    | Kondisi     | Total |
-| ---------- | ----------- | ----- |
-| 2025-11-11 | Tidak hujan | 112   |
-| 2025-11-12 | Tidak hujan | 115   |
-| 2025-11-13 | Tidak hujan | 134   |
-| 2025-11-18 | Hujan       | 83    |
-| 2025-11-19 | Tidak hujan | 115   |
+Tanggal	Kondisi	Total
 
----
-## 🔄 Diagram Alir Analisis
+2025-11-11	Tidak hujan	112
+2025-11-12	Tidak hujan	115
+2025-11-13	Tidak hujan	134
+2025-11-18	Hujan	83
+2025-11-19	Tidak hujan	115
 
-Berikut adalah diagram alir proses analisis pemodelan stokastik:
 
-![Diagram Alir Analisis](FLOWCHART.png)
-
----
-### **2. Estimasi λ per Kondisi**
-
-| Kondisi     | λ_mean | λ_sd  |
-| ----------- | ------ | ----- |
-| Hujan       | 83     | NA    |
-| Tidak hujan | 119    | 10.10 |
 
 ---
 
-### **3. Variabilitas Slot (Poisson Goodness Insight)**
+2. Estimasi λ per Kondisi
 
-| Kondisi     | mean_slot | var_slot | var/mean |
-| ----------- | --------- | -------- | -------- |
-| Hujan       | 6.92      | 23.17    | **3.35** |
-| Tidak hujan | 9.92      | 9.31     | **0.94** |
+Kondisi	λ_mean	λ_sd
+
+Hujan	83	NA
+Tidak hujan	119	10.10
+
+
+
+---
+
+3. Variabilitas Slot
+
+Kondisi	mean_slot	var_slot	var/mean
+
+Hujan	6.92	23.17	3.35
+Tidak hujan	9.92	9.31	0.94
+
 
 Interpretasi:
 
-* **Hujan → sistem lebih acak, sulit diprediksi**
-* **Tidak hujan → lebih konstan, sesuai asumsi Poisson**
+Hujan membuat kedatangan tidak stabil
+
+Tidak hujan lebih konsisten dan mendekati Poisson murni
+
+
 
 ---
 
-### **4. Elasticity Dampak Hujan**
+4. Elasticity Dampak Hujan
 
-Perubahan kedatangan akibat hujan:
-**–30.25%**
+Penurunan hingga –30.25%
 
-Makna:
+Makna praktis:
 
-* 1 jam hujan = kehilangan ±36 pelanggan
-* Selama jam makan siang → dampak signifikan pada pendapatan
+Hujan membuat kantin kehilangan ±36 pelanggan per jam
+
+Dampak signifikan pada pendapatan dan kapasitas pelayanan
+
+
 
 ---
 
-### **5. Analisis M/M/1**
+5. Analisis M/M/2
 
-λ terlalu besar → sistem tidak stabil → antrian mengular → waktu tunggu panjang
-Ketika λ mendekati μ → Wq → ∞ (meledak)
+Walaupun kasir ada 2, sistem tetap tidak stabil karena:
 
-Simulasi mencari μ minimum untuk target Wq ≤ 5 menit:
-**μ ≈ 130 pelanggan/jam**
+λ jauh melebihi μ_total
+
+Pola antrian tidak rapi
+
+Mahasiswa sering bergerombol → kasir tidak bisa optimal
+
+Jalur antri tidak berbentuk satu barisan
+
+
+Akibatnya:
+
+Waktu tunggu meningkat
+
+Antrian macet
+
+Ruang makan menjadi padat dan chaos
+
+
 
 ---
 
-## 💡 Insight Operasional yang Sangat Penting untuk Kampus
+💡 Insight Operasional untuk ITERA
 
-### **1. Kapasitas Kasir Saat Ini Tidak Memadai**
+1. Dua Kasir Tidak Cukup di Jam Puncak
 
-μ = 30 pelanggan/jam
-λ tidak hujan = 119 → **ρ = 3.97** → mustahil stabil
-Kantin pasti macet di jam makan siang.
+Dengan λ = 119 dan μ_total = 60 → ρ mendekati 2
+Ini menyebabkan antrian pasti tidak stabil.
 
-### **2. Solusi Kapasitas Optimal**
+2. Solusi Realistis
 
-Agar **Wq ≤ 5 menit**, diperlukan:
+Tambah kasir menjadi minimal 4 kasir
 
-* ✔ 4–5 kasir
-* atau ✔ 2 kasir + sistem order online/pickup
+Bentuk jalur antrian satu garis (single line queue)
 
-### **3. Pengaruh Hujan Terhadap Demand**
+Tambah papan petunjuk alur antrian
 
-Penurunan 30% berarti:
+Terapkan opsi order online/pickup
 
-* Kantin bisa merencanakan **jadwal pegawai adaptif cuaca**
-* Mengembangkan **kanopi/lorong anti hujan** → mengurangi drop pelanggan
+Tambah kanopi agar hujan tidak menghambat akses
 
-### **4. Slot Overload Dapat Diintervensi**
 
-Dari grafik λ(t):
+3. Intervensi pada Slot Overload
 
-* Slot **1 dan 7** paling sibuk
-  → bisa diarahkan ke **jalur cepat (fast lane)**
+Slot paling padat dapat diberi:
+
+Jalur cepat
+
+Petugas pengarah antrian
+
+Penataan ulang meja agar alur lebih jelas
+
+
 
 ---
 
-## 🧮 Teknologi yang Digunakan
+🧮 Teknologi
 
-* **R**
-* **tidyverse**
-* **ggplot2**
-* **zoo**
-* **dplyr**
+R
+
+tidyverse
+
+ggplot2
+
+dplyr
+
+math for queueing theory
+
+
 
 ---
 
+✨ Tentang Proyek
 
-
-## ✨ Tentang Proyek Ini
-
-Analisis ini disusun sebagai **Tugas Besar Pemodelan Stokastik**, bertujuan memberikan dasar ilmiah bagi optimalisasi antrian kantin ITERA melalui Proses Poisson dan model antrian M/M/1. Hasilnya diharapkan menjadi referensi bagi pengembangan layanan makan siang berbasis data dan kebijakan peningkatan fasilitas kampus.
+Analisis ini dibuat sebagai Tugas Besar Pemodelan Stokastik.
+Tujuannya memberikan dasar ilmiah bagi perbaikan sistem antrian Kantin Rumah Kayu ITERA berdasarkan pendekatan Proses Poisson dan model antrian M/M/2.
 
