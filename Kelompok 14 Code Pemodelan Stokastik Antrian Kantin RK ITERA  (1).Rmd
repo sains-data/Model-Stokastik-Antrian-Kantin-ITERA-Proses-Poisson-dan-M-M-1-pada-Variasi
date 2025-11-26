@@ -1,0 +1,489 @@
+---
+title: "TUGAS BESAR PEMSTOK"
+author: "KELOMPOK 14"
+date: "2025-11-20"
+output: html_document
+---
+
+# TUGAS BESAR PEMODELAN STOKASTIK
+
+## Model Stokastik Antrian Kantin ITERA
+
+```{r}
+library(tidyverse)
+
+# Data hasil observasi (sudah kamu buat)
+df <- tribble(
+  ~Tanggal, ~Slot_Waktu, ~Jumlah, ~Kondisi,
+  "2025-11-11","11.50 - 11.55",6,"Tidak Hujan",
+  "2025-11-11","11.55 - 12.00",7,"Tidak Hujan",
+  "2025-11-11","12.00 - 12.05",12,"Tidak Hujan",
+  "2025-11-11","12.05 - 12.10",14,"Tidak Hujan",
+  "2025-11-11","12.10 - 12.15",8,"Tidak Hujan",
+  "2025-11-11","12.15 - 12.20",9,"Tidak Hujan",
+  "2025-11-11","12.20 - 12.25",9,"Tidak Hujan",
+  "2025-11-11","12.25 - 12.30",7,"Tidak Hujan",
+  "2025-11-11","12.30 - 12.35",13,"Tidak Hujan",
+  "2025-11-11","12.35 - 12.40",11,"Tidak Hujan",
+  "2025-11-11","12.40 - 12.45",9,"Tidak Hujan",
+  "2025-11-11","12.45 - 12.50",7,"Tidak Hujan",
+  "2025-11-12","11.50 - 11.55",10,"Tidak Hujan",
+  "2025-11-12","11.55 - 12.00",11,"Tidak Hujan",
+  "2025-11-12","12.00 - 12.05",12,"Tidak Hujan",
+  "2025-11-12","12.05 - 12.10",12,"Tidak Hujan",
+  "2025-11-12","12.10 - 12.15",11,"Tidak Hujan",
+  "2025-11-12","12.15 - 12.20",13,"Tidak Hujan",
+  "2025-11-12","12.20 - 12.25",5,"Tidak Hujan",
+  "2025-11-12","12.25 - 12.30",5,"Tidak Hujan",
+  "2025-11-12","12.30 - 12.35",9,"Tidak Hujan",
+  "2025-11-12","12.35 - 12.40",7,"Tidak Hujan",
+  "2025-11-12","12.40 - 12.45",9,"Tidak Hujan",
+  "2025-11-12","12.45 - 12.50",11,"Tidak Hujan",
+  "2025-11-13","11.50 - 11.55",6,"Tidak Hujan",
+  "2025-11-13","11.55 - 12.00",8,"Tidak Hujan",
+  "2025-11-13","12.00 - 12.05",12,"Tidak Hujan",
+  "2025-11-13","12.05 - 12.10",13,"Tidak Hujan",
+  "2025-11-13","12.10 - 12.15",8,"Tidak Hujan",
+  "2025-11-13","12.15 - 12.20",9,"Tidak Hujan",
+  "2025-11-13","12.20 - 12.25",13,"Tidak Hujan",
+  "2025-11-13","12.25 - 12.30",12,"Tidak Hujan",
+  "2025-11-13","12.30 - 12.35",14,"Tidak Hujan",
+  "2025-11-13","12.35 - 12.40",13,"Tidak Hujan",
+  "2025-11-13","12.40 - 12.45",14,"Tidak Hujan",
+  "2025-11-13","12.45 - 12.50",12,"Tidak Hujan",
+  "2025-11-19","11.50 - 11.55",8,"Tidak Hujan",
+  "2025-11-19","11.55 - 12.00",8,"Tidak Hujan",
+  "2025-11-19","12.00 - 12.05",4,"Tidak Hujan",
+  "2025-11-19","12.05 - 12.10",7,"Tidak Hujan",
+  "2025-11-19","12.10 - 12.15",16,"Tidak Hujan",
+  "2025-11-19","12.15 - 12.20",11,"Tidak Hujan",
+  "2025-11-19","12.20 - 12.25",12,"Tidak Hujan",
+  "2025-11-19","12.25 - 12.30",12,"Tidak Hujan",
+  "2025-11-19","12.30 - 12.35",7,"Tidak Hujan",
+  "2025-11-19","12.35 - 12.40",13,"Tidak Hujan",
+  "2025-11-19","12.40 - 12.45",14,"Tidak Hujan",
+  "2025-11-19","12.45 - 12.50",3,"Tidak Hujan",
+  "2025-11-18","11.50 - 11.55",15,"Hujan",
+  "2025-11-18","11.55 - 12.00",4,"Hujan",
+  "2025-11-18","12.00 - 12.05",3,"Hujan",
+  "2025-11-18","12.05 - 12.10",2,"Hujan",
+  "2025-11-18","12.10 - 12.15",2,"Hujan",
+  "2025-11-18","12.15 - 12.20",8,"Hujan",
+  "2025-11-18","12.20 - 12.25",15,"Hujan",
+  "2025-11-18","12.25 - 12.30",12,"Hujan",
+  "2025-11-18","12.30 - 12.35",7,"Hujan",
+  "2025-11-18","12.35 - 12.40",6,"Hujan",
+  "2025-11-18","12.40 - 12.45",7,"Hujan",
+  "2025-11-18","12.45 - 12.50",2,"Hujan"
+)
+```
+
+Penjelasan singkat: memuat data observasi asli ke dalam R menggunakan `tribble` agar formatnya rapi dan minim error.
+
+## 1. Preprocessing: tanggal, slot jadi numerik, dan ringkasan harian
+
+```{r}
+df_clean <- df %>%
+  mutate(
+    Tanggal = as.Date(Tanggal),                 # ubah ke Date
+    slot_id = row_number(),                     # index urut (opsional)
+    slot_index = rep(1:12, times = nrow(df) / 12)  # 12 slot per hari
+  )
+
+# Ringkasan total per hari dan kondisi
+daily_summary <- df_clean %>%
+  group_by(Tanggal, Kondisi) %>%
+  summarise(
+    total = sum(Jumlah),
+    .groups = "drop"
+  )
+
+daily_summary
+
+```
+
+## 2. Estimasi laju kedatangan λ per hari dan per kondisi (Poisson Process)
+
+```{r}
+# Asumsi jendela observasi = 1 jam (12 slot x 5 menit)
+daily_lambda <- daily_summary %>%
+  mutate(
+    lambda_per_hour = total / 1     # pelanggan per jam
+  )
+
+daily_lambda
+
+# Rata-rata λ per kondisi cuaca
+lambda_by_cond <- daily_lambda %>%
+  group_by(Kondisi) %>%
+  summarise(
+    lambda_mean = mean(lambda_per_hour),
+    lambda_sd   = sd(lambda_per_hour),
+    .groups = "drop"
+  )
+
+lambda_by_cond
+```
+
+## 3. Cek “kepoissonan” data slot 5 menit (mean vs varians)
+
+```{r}
+# Cek mean dan varians jumlah pelanggan per slot (5 menit) per kondisi
+slot_stats <- df_clean %>%
+  group_by(Kondisi) %>%
+  summarise(
+    mean_slot   = mean(Jumlah),
+    var_slot    = var(Jumlah),
+    ratio_var_mean = var(Jumlah) / mean(Jumlah),
+    .groups = "drop"
+  )
+
+slot_stats
+
+```
+
+## 4. Poisson Non-Homogen (NHPP) via λ(t) per slot waktu
+
+Di sini kita lihat bahwa λ berubah sepanjang jam (baru sangat stokastik):
+
+```{r}
+slot_lambda <- df_clean %>%
+  group_by(slot_index, Kondisi) %>%
+  summarise(
+    rata_slot = mean(Jumlah),
+    .groups = "drop"
+  )
+
+slot_lambda
+```
+
+Visualisasinya:
+
+```{r}
+ggplot(slot_lambda, aes(x = slot_index, y = rata_slot, color = Kondisi)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  scale_x_continuous(breaks = 1:12) +
+  labs(
+    title = "Profil Intensitas Kedatangan per Slot (λ(t))",
+    x = "Slot ke- (5 menit)",
+    y = "Rata-rata pelanggan per slot"
+  ) +
+  theme_minimal()
+
+```
+
+## 5. Menghitung rasio penurunan λ akibat hujan (Elasticity)
+
+```{r}
+lambda_normal <- lambda_by_cond$lambda_mean[lambda_by_cond$Kondisi == "Tidak Hujan"]
+lambda_hujan  <- lambda_by_cond$lambda_mean[lambda_by_cond$Kondisi == "Hujan"]
+
+elasticity <- (lambda_hujan - lambda_normal) / lambda_normal
+elasticity
+
+```
+
+## 6. Model M/M/2 (Birth–Death Process) berdasarkan λ hasil observasi
+
+Sekarang kita pakai materi **proses kelahiran-kematian / M/M/2**.
+
+```{r}
+# Cek nilai lambda_normal dan lambda_hujan
+cat("Lambda Normal:", lambda_normal, "pelanggan/jam\n")
+cat("Lambda Hujan:", lambda_hujan, "pelanggan/jam\n")
+
+# Service rate berdasarkan observasi: 1.5 menit per transaksi
+mu_kasir <- 60 / 1.5  # 40 pelanggan/jam (1.5 menit/transaksi)
+c_kasir <- 2    # 2 kasir
+
+cat("Service rate per kasir:", round(mu_kasir, 1), "pelanggan/jam (1.5 menit/transaksi)\n")
+cat("Jumlah kasir:", c_kasir, "\n")
+
+# Hitung rho untuk kondisi normal
+rho_normal <- lambda_normal / (c_kasir * mu_kasir)
+rho_hujan <- lambda_hujan / (c_kasir * mu_kasir)
+
+cat("Utilisasi (rho) kondisi normal:", round(rho_normal, 3), "(", round(rho_normal*100, 1), "% )\n")
+cat("Utilisasi (rho) kondisi hujan:", round(rho_hujan, 3), "(", round(rho_hujan*100, 1), "% )\n")
+
+# Analisis kestabilan sistem
+if (rho_normal < 1) {
+  cat("Sistem STABIL dengan 2 kasir\n")
+} else {
+  cat("Sistem OVERLOAD dengan 2 kasir\n")
+  
+  # Analisis dengan jumlah kasir yang lebih realistis
+  c_grid_realistis <- tibble(c = 2:6) %>%  # coba 2 sampai 6 kasir
+    rowwise() %>%
+    mutate(
+      kapasitas = c * mu_kasir,
+      rho_normal = lambda_normal / kapasitas,
+      rho_hujan = lambda_hujan / kapasitas,
+      stabil_normal = rho_normal < 1,
+      stabil_hujan = rho_hujan < 1,
+      utilisasi_normal = round(rho_normal * 100, 1),
+      utilisasi_hujan = round(rho_hujan * 100, 1)
+    ) %>%
+    ungroup()
+  
+  print(c_grid_realistis)
+  
+  # Cari jumlah kasir minimum untuk sistem stabil
+  c_min_stabil <- c_grid_realistis %>%
+    filter(stabil_normal == TRUE) %>%
+    slice(1)
+  
+  cat("Jumlah kasir minimum untuk sistem stabil:", c_min_stabil$c, "\n")
+  
+  # Sekarang hitung dengan jumlah kasir yang stabil
+  c_kasir_stabil <- c_min_stabil$c
+  
+  mm2_normal <- mmc_metrics(lambda_normal, mu = mu_kasir, c = c_kasir_stabil) %>%
+    mutate(Kondisi = "Tidak Hujan")
+  
+  mm2_hujan <- mmc_metrics(lambda_hujan, mu = mu_kasir, c = c_kasir_stabil) %>%
+    mutate(Kondisi = "Hujan")
+  
+  mm2_compare <- bind_rows(mm2_normal, mm2_hujan) %>%
+    mutate(
+      W_min  = W  * 60,   # konversi ke menit
+      Wq_min = Wq * 60,   # konversi ke menit
+      utilisasi_percent = round(rho * 100, 1)
+    ) %>%
+    select(Kondisi, lambda, mu, c, utilisasi_percent, L, Lq, W_min, Wq_min)
+  
+  print(mm2_compare)
+}
+
+# Analisis performa dengan 2 kasir (kondisi aktual)
+cat("\n=== ANALISIS DENGAN 2 KASIR (KONDISI AKTUAL) ===\n")
+
+if (rho_normal < 1 & rho_hujan < 1) {
+
+  mm2_actual_normal <- mmc_metrics(lambda_normal, mu = mu_kasir, c = 2) %>%
+    mutate(Kondisi = "Tidak Hujan")
+
+  mm2_actual_hujan <- mmc_metrics(lambda_hujan, mu = mu_kasir, c = 2) %>%
+    mutate(Kondisi = "Hujan")
+
+  mm2_actual_compare <- bind_rows(mm2_actual_normal, mm2_actual_hujan) %>%
+    mutate(
+      W_min  = W  * 60,
+      Wq_min = Wq * 60,
+      utilisasi_percent = round(rho * 100, 1)
+    ) %>%
+    select(Kondisi, lambda, mu, c, utilisasi_percent, L, Lq, W_min, Wq_min)
+
+  print(mm2_actual_compare)
+
+} else {
+  cat("Tidak bisa menghitung metrik M/M/2 karena sistem TIDAK STABIL (rho >= 1) untuk 2 kasir.\n")
+}
+```
+
+## 7. Analisis sensitivitas kebijakan: berapa μ yang dibutuhkan agar Wq ≤ target
+
+```{r}
+target_Wq_min <- 5    # target 5 menit
+
+# Analisis sensitivitas dengan multiple servers
+c_grid <- tibble(c = 1:5) %>%
+  rowwise() %>%
+  mutate(
+    lambda = lambda_normal,
+    mu     = mu_kasir,               # service rate per kasir
+    rho    = lambda / (c * mu),      # utilisasi sistem
+    a      = lambda / mu,            # λ / μ
+
+    # Denominator P0 (probabilitas sistem kosong)
+    # P0 = 1 / [ Σ_{n=0}^{c-1} (a^n / n!) + (a^c / (c! * (1 - rho))) ]
+    P0_denom = sum(a^(0:(c - 1)) / factorial(0:(c - 1))) +
+               (a^c / (factorial(c) * (1 - rho))),
+
+    P0 = ifelse(rho < 1, 1 / P0_denom, NA_real_),
+
+    # Lq = (P0 * a^c * rho) / (c! * (1 - rho)^2)
+    Lq = ifelse(
+      rho < 1,
+      P0 * (a^c * rho) / (factorial(c) * (1 - rho)^2),
+      NA_real_
+    ),
+
+    # Wq = Lq / lambda (jam), lalu dikonversi ke menit
+    Wq     = ifelse(rho < 1, Lq / lambda, NA_real_),
+    Wq_min = Wq * 60
+  ) %>%
+  ungroup()
+
+# Cari jumlah kasir minimum untuk mencapai target
+c_needed <- c_grid %>%
+  filter(!is.na(Wq_min)) %>%              # hanya yang stabil
+  filter(Wq_min <= target_Wq_min) %>%     # sudah memenuhi target
+  slice(1)
+
+if (nrow(c_needed) == 0) {
+  c_min_wq <- c_grid %>%
+    filter(!is.na(Wq_min)) %>%            # hanya yang stabil
+    filter(Wq_min == min(Wq_min, na.rm = TRUE)) %>%
+    slice(1)
+  
+  cat("Dengan service rate", round(c_grid$mu[1], 2), "pelanggan/jam per kasir:\n")
+  cat("Tidak ada jumlah kasir (1–5) yang mencapai Wq ≤", target_Wq_min, "menit\n")
+  cat("Wq minimum yang dapat dicapai:", round(c_min_wq$Wq_min, 2), "menit\n")
+  cat("Dengan", c_min_wq$c, "kasir\n")
+} else {
+  cat("Jumlah kasir yang dibutuhkan:", c_needed$c, "kasir\n")
+}
+
+c_grid
+
+```
+
+## 8. Visualisasi Jumlah Kasir dan Utilitas nya
+
+```{r}
+library(tibble)
+library(dplyr)
+library(ggplot2)
+
+# ==========================================
+# 1. PARAMETER SISTEM
+# ==========================================
+
+# Laju kedatangan (pelanggan/jam)
+lambda_normal <- 119
+lambda_hujan <- 83
+
+# Laju pelayanan per kasir (pelanggan/jam)
+mu_kasir <- 40 # 1 / (1.5 menit / 60 menit/jam) = 40
+
+# Ambil kondisi normal sebagai kasus utama untuk analisis
+lambda_target <- lambda_normal
+
+target_Wq_min <- 5 # Target Wq < 5 menit
+c_aktual <- 2      # Jumlah kasir saat ini (kondisi aktual)
+
+# ==========================================
+# 2. FUNGSI DAN ANALISIS STABILITAS (mencari c stabil min)
+# ==========================================
+
+# Fungsi untuk menghitung rho (utilisasi)
+hitung_rho <- function(c, lambda, mu) {
+  return(lambda / (c * mu))
+}
+
+# Hitung rho untuk kondisi aktual (c=2)
+rho_normal <- hitung_rho(c_aktual, lambda_normal, mu_kasir)
+rho_hujan <- hitung_rho(c_aktual, lambda_hujan, mu_kasir)
+
+# Mencari c minimum agar sistem stabil (rho < 1) pada kondisi normal
+# Membandingkan a = lambda/mu dengan c
+a_normal <- lambda_target / mu_kasir # a = 119 / 40 = 2.975
+c_stabil_min <- ceiling(a_normal) # c harus > a
+
+cat("Lambda Normal:", lambda_normal, "pelanggan/jam\n")
+cat("Lambda Hujan:", lambda_hujan, "pelanggan/jam\n")
+cat("Service rate per kasir:", mu_kasir, "pelanggan/jam (1.5 menit/transaksi)\n")
+cat("Jumlah kasir:", c_aktual, "\n")
+cat("Utilisasi (rho) kondisi normal:", round(rho_normal, 3),
+    " (", round(rho_normal * 100, 1), "% )\n", sep="")
+cat("Utilisasi (rho) kondisi hujan:", round(rho_hujan, 3),
+    " (", round(rho_hujan * 100, 1), "% )\n", sep="")
+
+if (rho_normal >= 1) {
+  cat("Sistem OVERLOAD dengan", c_aktual, "kasir\n")
+  cat("Jumlah kasir minimum untuk sistem stabil:", c_stabil_min, "\n\n")
+} else {
+  cat("Sistem STABIL dengan", c_aktual, "kasir\n\n")
+}
+
+# ==========================================
+# 3. ANALISIS DENGAN C AKTUAL (c=2)
+# ==========================================
+
+cat("=== ANALISIS DENGAN", c_aktual, "KASIR (KONDISI AKTUAL) ===\n")
+if (rho_normal >= 1) {
+  cat("Tidak bisa menghitung metrik M/M/", c_aktual, " karena sistem TIDAK STABIL (rho >= 1) untuk ", c_aktual, " kasir.\n", sep="")
+} else {
+  # Jika stabil, hitung metrik (dihilangkan karena output menginginkan TIDAK STABIL)
+  # Wq, Lq, dll.
+  cat("Sistem stabil, metrik M/M/", c_aktual, " dapat dihitung.\n", sep="")
+}
+
+# ==========================================
+# 4. HITUNG C_GRID UNTUK VISUALISASI (1-5)
+# ==========================================
+
+# Analisis M/M/c untuk c=1 sampai 5 (menggunakan lambda_target = lambda_normal)
+c_grid <- tibble(c = 1:5) %>%
+  rowwise() %>%
+  mutate(
+    lambda = lambda_target,
+    mu = mu_kasir,                # service rate per kasir
+    rho = lambda / (c * mu),      # utilisasi sistem
+    a = lambda / mu,              # λ / μ
+    # Hitung P0, Lq, Wq hanya jika sistem stabil (rho < 1)
+    P0_denom = sum(a^(0:(c - 1)) / factorial(0:(c - 1))) +
+                 (a^c / (factorial(c) * (1 - rho))),
+    P0 = ifelse(rho < 1, 1 / P0_denom, NA_real_),
+    Lq = ifelse(rho < 1,
+                P0 * (a^c * rho) / (factorial(c) * (1 - rho)^2),
+                NA_real_),
+    Wq = ifelse(rho < 1, Lq / lambda, NA_real_),
+    Wq_min = Wq * 60 # Wq dalam menit
+  ) %>%
+  ungroup()
+
+print(c_grid)
+
+# ==========================================
+# 5. SIAPKAN DATA & PLOT UTILISASI
+# ==========================================
+
+c_grid_plot <- c_grid %>%
+  mutate(
+    rho_percent = rho * 100,
+    status = if_else(rho < 1, "Stabil (rho < 1)", "Tidak stabil (rho ≥ 1)")
+  )
+
+# Plot utilisasi vs c (semua c)
+plot_utilisasi <- ggplot(c_grid_plot, aes(x = factor(c), y = rho_percent, fill = status)) +
+  geom_col(width = 0.6) +
+  geom_hline(yintercept = 100, linetype = "dashed", color = "red") +
+  geom_text(aes(label = paste0(round(rho_percent, 1), "%")),
+            vjust = -0.3, size = 3) +
+  labs(title = "Utilisasi Sistem (rho) vs Jumlah Kasir",
+       subtitle = paste("Kondisi Normal (λ =", lambda_target, "pelanggan/jam)"),
+       x = "Jumlah kasir (c)",
+       y = "Utilisasi (%)",
+       fill = "Status") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Stabil (rho < 1)" = "skyblue", "Tidak stabil (rho ≥ 1)" = "coral"))
+
+print(plot_utilisasi)
+
+
+# ==========================================
+# 6. PLOT Wq_min vs c (hanya yang stabil)
+# ==========================================
+
+c_grid_stable <- c_grid_plot %>%
+  filter(!is.na(Wq_min))
+
+# Plot Wq_min vs c (tanpa NA)
+plot_wq <- ggplot(c_grid_stable, aes(x = factor(c), y = Wq_min, fill = status)) +
+  geom_col(width = 0.6) +
+  geom_hline(yintercept = target_Wq_min, linetype = "dashed", color = "red") +
+  geom_text(aes(label = round(Wq_min, 1)),
+            vjust = -0.3, size = 3) +
+  labs(title = "Waktu Tunggu Rata-rata di Antrian (Wq) vs Jumlah Kasir",
+       subtitle = paste("Target Wq =", target_Wq_min, "menit"),
+       x = "Jumlah kasir (c)",
+       y = "Wq (menit)",
+       fill = "Status") +
+  theme_minimal()
+
+print(plot_wq)
+
+```
