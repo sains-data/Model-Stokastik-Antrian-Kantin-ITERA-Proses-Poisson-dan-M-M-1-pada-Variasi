@@ -1,12 +1,12 @@
-# Model-Stokastik-Antrian-Kantin-ITERA-Proses-Poisson-dan-M-M-1-pada-Variasi-Cuaca
-Penelitian ini menganalisis antrian Kantin Rumah Kayu ITERA dengan Proses Poisson dan model M/M/1 untuk mempelajari dampak cuaca terhadap kedatangan pelanggan, utilisasi kasir, dan waktu tunggu, serta memberikan rekomendasi peningkatan efisiensi layanan berbasis data.
+# Model-Stokastik-Antrian-Kantin-ITERA-Proses-Poisson-dan-M-M-c-pada-Variasi-Cuaca
+Penelitian ini menganalisis antrian Kantin Rumah Kayu ITERA dengan Proses Poisson dan model M/M/2 untuk mempelajari dampak cuaca terhadap kedatangan pelanggan, utilisasi kasir, dan waktu tunggu, serta memberikan rekomendasi peningkatan efisiensi layanan berbasis data.
 
 
 
 
 * **Proses Poisson & Non-Homogen**
-* **Birth–Death / M/M/1**
-* Insight kebijakan yang bisa “dijual” ke institusi.
+* **Birth–Death / M/M/2**
+* Insight kebijakan yang bisa "dijual" ke institusi.
 
 Saya mulai dari `df` yang sudah di buat.
 
@@ -111,7 +111,7 @@ daily_summary
 Penjelasan:
 
 * `Tanggal` diubah ke tipe `Date`.
-* `slot_index` 1–12 dipakai sebagai “waktu diskrit” dalam satu jam.
+* `slot_index` 1–12 dipakai sebagai "waktu diskrit" dalam satu jam.
 * `daily_summary` menghitung **total pelanggan per hari** untuk setiap kondisi cuaca.
 
 ---
@@ -147,7 +147,7 @@ Penjelasan:
 
 ---
 
-## 3. Cek “kepoissonan” data slot 5 menit (mean vs varians)
+## 3. Cek "kepoissonan" data slot 5 menit (mean vs varians)
 
 ```r
 # Cek mean dan varians jumlah pelanggan per slot (5 menit) per kondisi
@@ -205,7 +205,7 @@ Penjelasan:
 
 * `slot_lambda` adalah **estimasi intensitas λ(t)** per 5 menit.
 * Karena nilai λ(t) berbeda antar slot, ini mendekati **Poisson Non-Homogen (NHPP)**: λ bukan konstan, tetapi fungsi dari waktu diskrit.
-* Insight: pihak kampus bisa melihat **slot mana yang menjadi “critical window”** dengan intensitas tertinggi.
+* Insight: pihak kampus bisa melihat **slot mana yang menjadi "critical window"** dengan intensitas tertinggi.
 
 ---
 
@@ -222,131 +222,159 @@ elasticity
 Penjelasan:
 
 * `elasticity` negatif, sekitar –0.30 → **hujan menurunkan laju kedatangan sekitar 30 persen**.
-* Ini bisa dibahas sebagai “demand sensitivity” terhadap cuaca, sangat kuat untuk argumen ke rektorat.
+* Ini bisa dibahas sebagai "demand sensitivity" terhadap cuaca, sangat kuat untuk argumen ke rektorat.
 
 ---
 
-## 6. Model M/M/1 (Birth–Death Process) berdasarkan λ hasil observasi
+## 6. Model M/M/2 (Birth–Death Process) berdasarkan λ hasil observasi
 
-Sekarang kita pakai materi **proses kelahiran-kematian / M/M/1**.
+Sekarang kita pakai materi **proses kelahiran-kematian / M/M/2** dengan 2 kasir.
 
 ```r
-# Fungsi metrik M/M/1
-mm1_metrics <- function(lambda, mu) {
-  if (lambda >= mu) {
-    stop("Sistem tidak stabil: lambda >= mu")
+# Fungsi metrik M/M/c untuk multiple kasir
+mmc_metrics <- function(lambda, mu, c) {
+  rho <- lambda / (c * mu)
+  
+  if (rho >= 1) {
+    stop("Sistem tidak stabil: rho >= 1")
   }
   
-  rho <- lambda / mu
-  L   <- rho / (1 - rho)
-  Lq  <- rho^2 / (1 - rho)
-  W   <- 1 / (mu - lambda)
-  Wq  <- rho / (mu - lambda)
+  # Probability of zero customers in system (P0)
+  sum_term <- 0
+  for (n in 0:(c-1)) {
+    sum_term <- sum_term + ( (lambda/mu)^n / factorial(n) )
+  }
+  P0 <- 1 / ( sum_term + ( (lambda/mu)^c / (factorial(c) * (1 - rho)) ) )
+  
+  # Average number in queue (Lq)
+  Lq <- ( (lambda/mu)^c * rho / (factorial(c) * (1 - rho)^2) ) * P0
+  
+  # Other metrics
+  L <- Lq + lambda/mu
+  Wq <- Lq / lambda
+  W <- Wq + 1/mu
   
   tibble(
     lambda = lambda,
-    mu     = mu,
-    rho    = rho,
-    L      = L,
-    Lq     = Lq,
-    W      = W,
-    Wq     = Wq
+    mu = mu,
+    c = c,
+    rho = rho,
+    L = L,
+    Lq = Lq,
+    W = W,
+    Wq = Wq
   )
 }
 
-# Asumsi service rate satu kasir (μ) ~ 30 pelanggan/jam (≈ 2 menit per transaksi)
+# Asumsi service rate per kasir (μ) ~ 30 pelanggan/jam (≈ 2 menit per transaksi)
 mu_kasir <- 30
+c_kasir <- 2  # 2 kasir berdasarkan observasi lapangan
 
-mm1_normal <- mm1_metrics(lambda_normal, mu_kasir) %>%
+mm2_normal <- mmc_metrics(lambda_normal, mu = mu_kasir, c = c_kasir) %>%
   mutate(Kondisi = "Tidak Hujan")
 
-mm1_hujan <- mm1_metrics(lambda_hujan, mu_kasir) %>%
+mm2_hujan <- mmc_metrics(lambda_hujan, mu = mu_kasir, c = c_kasir) %>%
   mutate(Kondisi = "Hujan")
 
-mm1_compare <- bind_rows(mm1_normal, mm1_hujan) %>%
+mm2_compare <- bind_rows(mm2_normal, mm2_hujan) %>%
   mutate(
-    W_min  = W  * 60,
-    Wq_min = Wq * 60
+    W_min  = W  * 60,   # konversi ke menit
+    Wq_min = Wq * 60    # konversi ke menit
   ) %>%
   select(Kondisi, everything())
 
-mm1_compare
+mm2_compare
 ```
 
 Penjelasan:
 
 * Menghubungkan **λ hasil data** dengan **μ asumsi kasir** untuk menurunkan ρ, L, Lq, W, Wq.
-* Ini persis materi **birth–death processes**, **M/M/1 queue**, dan **continuous-time Markov chain** pada state jumlah pelanggan di sistem.
+* Model **M/M/2** lebih realistis karena ada 2 kasir di lapangan.
+* Ini persis materi **birth–death processes**, **M/M/c queue**, dan **continuous-time Markov chain** pada state jumlah pelanggan di sistem.
 
 ---
 
-## 7. Analisis sensitivitas kebijakan: berapa μ yang dibutuhkan agar Wq ≤ target
+## 7. Analisis sensitivitas kebijakan: berapa kasir yang dibutuhkan agar Wq ≤ target
 
 Ini bagian yang powerfull buat rekomendasi kebijakan.
 
 Misal: kampus ingin **rata-rata waktu tunggu Wq ≤ 5 menit** saat tidak hujan.
 
-Dari teori M/M/1:
-
-[
-W_q = \frac{\rho}{\mu - \lambda} = \frac{\lambda}{\mu(\mu - \lambda)}
-]
-
-Tapi lebih gampang kita cari numerik dengan grid μ.
-
 ```r
 target_Wq_min <- 5    # target 5 menit
-target_Wq_hour <- target_Wq_min / 60
 
-# Coba berbagai μ (kapasitas pelayanan) dari 20 sampai 60 pelanggan/jam
-mu_grid <- tibble(mu = seq(20, 60, by = 1)) %>%
+# Analisis sensitivitas dengan multiple servers
+c_grid <- tibble(c = 1:5) %>%
   rowwise() %>%
   mutate(
     lambda = lambda_normal,
-    rho    = lambda / mu,
-    Wq     = ifelse(lambda < mu, rho / (mu - lambda), Inf),
+    mu = mu_kasir,  # asumsi service rate per kasir
+    rho = lambda / (c * mu),
+    Wq = ifelse(rho < 1, 
+                ( (lambda/mu)^c * rho / (factorial(c) * (1 - rho)^2) ) * 
+                  (1 / (sum(( (lambda/mu)^(0:(c-1)) / factorial(0:(c-1)) ) + 
+                          ( (lambda/mu)^c / (factorial(c) * (1 - rho)) ))) ) / lambda,
+                Inf),
     Wq_min = Wq * 60
   ) %>%
   ungroup()
 
-# μ minimum untuk mencapai Wq <= 5 menit
-mu_needed <- mu_grid %>%
+# C jumlah kasir minimum untuk mencapai target
+c_needed <- c_grid %>%
   filter(Wq_min <= target_Wq_min) %>%
   slice(1)
 
-mu_needed
+if (nrow(c_needed) == 0) {
+  c_min_wq <- c_grid %>%
+    filter(Wq_min == min(Wq_min, na.rm = TRUE)) %>%
+    slice(1)
+  
+  cat("Dengan service rate", c_grid$mu[1], "per kasir:\n")
+  cat("Tidak ada jumlah kasir yang mencapai Wq ≤", target_Wq_min, "menit\n")
+  cat("Wq minimum yang dapat dicapai:", round(c_min_wq$Wq_min, 2), "menit\n")
+  cat("Dengan", c_min_wq$c, "kasir\n")
+} else {
+  cat("Jumlah kasir yang dibutuhkan:", c_needed$c, "\n")
+}
+
+c_grid
 ```
 
 Penjelasan:
 
-* Kita cari **berapa laju pelayanan μ** yang dibutuhkan agar rata-rata waktu tunggu tidak lebih dari 5 menit.
-* Hasil `mu_needed` bisa diterjemahkan menjadi:
-
-  * Berapa kasir tambahan, atau
-  * Berapa kecepatan kasir yang harus dicapai, atau
-  * Apakah perlu sistem pre-order untuk menurunkan λ efektif.
+* Kita cari **berapa jumlah kasir** yang dibutuhkan agar rata-rata waktu tunggu tidak lebih dari 5 menit.
+* Hasil `c_needed` bisa diterjemahkan menjadi rekomendasi staffing yang optimal.
 
 ---
 
-## 8. Visualisasi kebijakan: Wq vs μ (kapasitas layanan)
+## 8. Visualisasi kebijakan: Wq vs jumlah kasir
 
 ```r
-ggplot(mu_grid, aes(x = mu, y = Wq_min)) +
-  geom_line(linewidth = 1) +
-  geom_hline(yintercept = target_Wq_min, linetype = "dashed", color = "red") +
+# Visualisasi untuk multiple servers (M/M/c)
+ggplot(c_grid, aes(x = c, y = Wq_min)) +
+  geom_col(fill = "steelblue", alpha = 0.7) +
+  geom_hline(yintercept = target_Wq_min, linetype = "dashed", color = "red", linewidth = 1) +
+  geom_text(aes(label = round(Wq_min, 1)), vjust = -0.5, size = 3) +
   labs(
-    title = "Kurva Waktu Tunggu (Wq) vs Kapasitas Pelayanan μ\nKondisi Tidak Hujan",
-    x = "μ (pelanggan per jam)",
-    y = "Wq (menit)"
+    title = "Analisis Sensitivitas: Jumlah Kasir vs Waktu Tunggu",
+    subtitle = paste("λ =", round(lambda_normal, 1), "pelanggan/jam | Service rate =", mu_kasir, "per kasir"),
+    x = "Jumlah Kasir",
+    y = "Waktu Tunggu Rata-rata Wq (menit)",
+    caption = paste("Target Wq ≤", target_Wq_min, "menit")
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "darkblue")
+  ) +
+  scale_x_continuous(breaks = 1:max(c_grid$c))
 ```
 
 Penjelasan:
 
 * Grafik ini sangat efektif untuk menunjukkan ke kampus:
-  “Jika μ di bawah titik X, waktu tunggu akan lama; kalau μ ditingkatkan ke Y, Wq turun drastis.”
-* Ini insight yang “terasa” secara operasional, tidak hanya matematis.
+  "Dengan jumlah kasir saat ini (2), waktu tunggu adalah X menit. Jika ditambah menjadi Y kasir, Wq turun menjadi Z menit."
+* Ini insight yang "terasa" secara operasional, tidak hanya matematis.
 
 ---
 
@@ -361,18 +389,24 @@ Dari semua langkah di atas, insight yang bisa kamu tulis di laporan:
 
 2. **Dampak hujan**
 
-   * λ hujan lebih rendah sekitar 30 persen. Ini bukan hanya “sepi”, tetapi penurunan demand yang signifikan.
+   * λ hujan lebih rendah sekitar 30 persen. Ini bukan hanya "sepi", tetapi penurunan demand yang signifikan.
    * Risiko: pendapatan UMKM turun, stok harian perlu disesuaikan.
 
-3. **M/M/1 dan utilisasi**
+3. **M/M/2 dan utilisasi**
 
-   * Pada hari tidak hujan, ρ mendekati 1 di jam sibuk → sistem hampir jenuh, sehingga antrean mudah menggelembung.
-   * Hujan menurunkan ρ, tetapi secara ekonomi justru merugikan kantin.
+   * Dengan 2 kasir, sistem lebih stabil dibanding M/M/1
+   * Pada hari tidak hujan, ρ masih mungkin tinggi → perlu monitoring utilisasi
+   * Analisis menunjukkan apakah 2 kasir cukup atau perlu penambahan
 
-4. **Analisis sensitivitas μ**
+4. **Analisis sensitivitas staffing**
 
-   * Dengan target SLA (misal Wq ≤ 5 menit), bisa dihitung secara eksplisit **berapa kapasitas pelayanan minimal**.
+   * Dengan target SLA (misal Wq ≤ 5 menit), bisa dihitung secara eksplisit **berapa kasir minimal** yang dibutuhkan
    * Ini bisa diterjemahkan menjadi:
+     * Staffing fleksibel berdasarkan prediksi cuaca
+     * Sistem shift kasir selama jam puncak
+     * Optimalisasi layout untuk efisiensi pelayanan
 
-     * 1 kasir tetap + 1 kasir tambahan di peak
-     * atau percepatan layanan melalui pembayaran cashless, sistem tray siap saji, dsb.
+5. **Rekomendasi berbasis data**
+   * **Operasional**: Penambahan kasir sementara selama slot kritis
+   * **Teknologi**: Implementasi sistem pre-order untuk meratakan beban
+   * **Manajemen**: Kebijakan staffing adaptif berdasarkan prediksi cuaca dan hari perkuliahan
