@@ -403,92 +403,148 @@ Penjelasan:
 ## 8. Visualisasi Jumlah kasir dan Utilitas
 
 ```r
-{r}
-# ==========================================
-# Analisis M/M/c + Visualisasi 
-# ==========================================
-
 library(tibble)
 library(dplyr)
 library(ggplot2)
 
-target_Wq_min <- 5    # target 5 menit
+# ==========================================
+# 1. PARAMETER SISTEM
+# ==========================================
 
-# --------- 1) Hitung c_grid (kode kamu) ---------
+# Laju kedatangan (pelanggan/jam)
+lambda_normal <- 119
+lambda_hujan <- 83
+
+# Laju pelayanan per kasir (pelanggan/jam)
+mu_kasir <- 40 # 1 / (1.5 menit / 60 menit/jam) = 40
+
+# Ambil kondisi normal sebagai kasus utama untuk analisis
+lambda_target <- lambda_normal
+
+target_Wq_min <- 5 # Target Wq < 5 menit
+c_aktual <- 2      # Jumlah kasir saat ini (kondisi aktual)
+
+# ==========================================
+# 2. FUNGSI DAN ANALISIS STABILITAS (mencari c stabil min)
+# ==========================================
+
+# Fungsi untuk menghitung rho (utilisasi)
+hitung_rho <- function(c, lambda, mu) {
+  return(lambda / (c * mu))
+}
+
+# Hitung rho untuk kondisi aktual (c=2)
+rho_normal <- hitung_rho(c_aktual, lambda_normal, mu_kasir)
+rho_hujan <- hitung_rho(c_aktual, lambda_hujan, mu_kasir)
+
+# Mencari c minimum agar sistem stabil (rho < 1) pada kondisi normal
+# Membandingkan a = lambda/mu dengan c
+a_normal <- lambda_target / mu_kasir # a = 119 / 40 = 2.975
+c_stabil_min <- ceiling(a_normal) # c harus > a
+
+cat("Lambda Normal:", lambda_normal, "pelanggan/jam\n")
+cat("Lambda Hujan:", lambda_hujan, "pelanggan/jam\n")
+cat("Service rate per kasir:", mu_kasir, "pelanggan/jam (1.5 menit/transaksi)\n")
+cat("Jumlah kasir:", c_aktual, "\n")
+cat("Utilisasi (rho) kondisi normal:", round(rho_normal, 3),
+    " (", round(rho_normal * 100, 1), "% )\n", sep="")
+cat("Utilisasi (rho) kondisi hujan:", round(rho_hujan, 3),
+    " (", round(rho_hujan * 100, 1), "% )\n", sep="")
+
+if (rho_normal >= 1) {
+  cat("Sistem OVERLOAD dengan", c_aktual, "kasir\n")
+  cat("Jumlah kasir minimum untuk sistem stabil:", c_stabil_min, "\n\n")
+} else {
+  cat("Sistem STABIL dengan", c_aktual, "kasir\n\n")
+}
+
+# ==========================================
+# 3. ANALISIS DENGAN C AKTUAL (c=2)
+# ==========================================
+
+cat("=== ANALISIS DENGAN", c_aktual, "KASIR (KONDISI AKTUAL) ===\n")
+if (rho_normal >= 1) {
+  cat("Tidak bisa menghitung metrik M/M/", c_aktual, " karena sistem TIDAK STABIL (rho >= 1) untuk ", c_aktual, " kasir.\n", sep="")
+} else {
+  # Jika stabil, hitung metrik (dihilangkan karena output menginginkan TIDAK STABIL)
+  # Wq, Lq, dll.
+  cat("Sistem stabil, metrik M/M/", c_aktual, " dapat dihitung.\n", sep="")
+}
+
+# ==========================================
+# 4. HITUNG C_GRID UNTUK VISUALISASI (1-5)
+# ==========================================
+
+# Analisis M/M/c untuk c=1 sampai 5 (menggunakan lambda_target = lambda_normal)
 c_grid <- tibble(c = 1:5) %>%
   rowwise() %>%
   mutate(
-    lambda = lambda_normal,
-    mu     = mu_kasir,               # service rate per kasir
-    rho    = lambda / (c * mu),      # utilisasi sistem
-    a      = lambda / mu,            # λ / μ
+    lambda = lambda_target,
+    mu = mu_kasir,                # service rate per kasir
+    rho = lambda / (c * mu),      # utilisasi sistem
+    a = lambda / mu,              # λ / μ
+    # Hitung P0, Lq, Wq hanya jika sistem stabil (rho < 1)
     P0_denom = sum(a^(0:(c - 1)) / factorial(0:(c - 1))) +
-               (a^c / (factorial(c) * (1 - rho))),
+                 (a^c / (factorial(c) * (1 - rho))),
     P0 = ifelse(rho < 1, 1 / P0_denom, NA_real_),
     Lq = ifelse(rho < 1,
                 P0 * (a^c * rho) / (factorial(c) * (1 - rho)^2),
                 NA_real_),
-    Wq     = ifelse(rho < 1, Lq / lambda, NA_real_),
-    Wq_min = Wq * 60
+    Wq = ifelse(rho < 1, Lq / lambda, NA_real_),
+    Wq_min = Wq * 60 # Wq dalam menit
   ) %>%
   ungroup()
 
-# --------- 2) Info jumlah kasir minimum ---------
-c_needed <- c_grid %>%
-  filter(!is.na(Wq_min)) %>%
-  filter(Wq_min <= target_Wq_min) %>%
-  slice(1)
-
-if (nrow(c_needed) == 0) {
-  c_min_wq <- c_grid %>%
-    filter(!is.na(Wq_min)) %>%
-    filter(Wq_min == min(Wq_min, na.rm = TRUE)) %>%
-    slice(1)
-  cat("Tidak ada c (1–5) yang mencapai Wq <=", target_Wq_min, "menit\n")
-  cat("Wq minimum:", round(c_min_wq$Wq_min, 2), "menit dengan c =", c_min_wq$c, "\n\n")
-} else {
-  cat("Jumlah kasir minimum agar Wq <=", target_Wq_min,
-      "menit adalah c =", c_needed$c, "\n\n")
-}
-
 print(c_grid)
 
-# --------- 3) Siapkan data untuk plot ---------
+# ==========================================
+# 5. SIAPKAN DATA & PLOT UTILISASI
+# ==========================================
+
 c_grid_plot <- c_grid %>%
   mutate(
     rho_percent = rho * 100,
-    status = if_else(is.na(Wq_min),
-                     "Tidak stabil (rho ≥ 1)",
-                     "Stabil (rho < 1)")
+    status = if_else(rho < 1, "Stabil (rho < 1)", "Tidak stabil (rho ≥ 1)")
   )
 
-# Data hanya yang stabil untuk plot Wq (supaya tidak ada NA)
+# Plot utilisasi vs c (semua c)
+plot_utilisasi <- ggplot(c_grid_plot, aes(x = factor(c), y = rho_percent, fill = status)) +
+  geom_col(width = 0.6) +
+  geom_hline(yintercept = 100, linetype = "dashed", color = "red") +
+  geom_text(aes(label = paste0(round(rho_percent, 1), "%")),
+            vjust = -0.3, size = 3) +
+  labs(title = "Utilisasi Sistem (rho) vs Jumlah Kasir",
+       subtitle = paste("Kondisi Normal (λ =", lambda_target, "pelanggan/jam)"),
+       x = "Jumlah kasir (c)",
+       y = "Utilisasi (%)",
+       fill = "Status") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Stabil (rho < 1)" = "skyblue", "Tidak stabil (rho ≥ 1)" = "coral"))
+
+print(plot_utilisasi)
+
+
+# ==========================================
+# 6. PLOT Wq_min vs c (hanya yang stabil)
+# ==========================================
+
 c_grid_stable <- c_grid_plot %>%
   filter(!is.na(Wq_min))
 
-# --------- 4) Plot Wq_min vs c (tanpa NA) ---------
-ggplot(c_grid_stable, aes(x = factor(c), y = Wq_min, fill = status)) +
+# Plot Wq_min vs c (tanpa NA)
+plot_wq <- ggplot(c_grid_stable, aes(x = factor(c), y = Wq_min, fill = status)) +
   geom_col(width = 0.6) +
-  geom_hline(yintercept = target_Wq_min, linetype = "dashed") +
+  geom_hline(yintercept = target_Wq_min, linetype = "dashed", color = "red") +
   geom_text(aes(label = round(Wq_min, 1)),
             vjust = -0.3, size = 3) +
-  labs(title = "Waktu Tunggu Rata-rata di Antrian (Wq)",
+  labs(title = "Waktu Tunggu Rata-rata di Antrian (Wq) vs Jumlah Kasir",
+       subtitle = paste("Target Wq =", target_Wq_min, "menit"),
        x = "Jumlah kasir (c)",
        y = "Wq (menit)",
        fill = "Status") +
   theme_minimal()
 
-# --------- 5) Plot utilisasi vs c (semua c) ---------
-ggplot(c_grid_plot, aes(x = factor(c), y = rho_percent, fill = status)) +
-  geom_col(width = 0.6) +
-  geom_hline(yintercept = 100, linetype = "dashed") +
-  geom_text(aes(label = paste0(round(rho_percent, 1), "%")),
-            vjust = -0.3, size = 3) +
-  labs(title = "Utilisasi Sistem (rho)",
-       x = "Jumlah kasir (c)",
-       y = "Utilisasi (%)",
-       fill = "Status") +
-  theme_minimal()
+print(plot_wq)
 ```
 
 Penjelasan:
