@@ -400,7 +400,7 @@ Penjelasan:
 
 ---
 
-## 8. Visualisasi kebijakan: Wq vs jumlah kasir
+## 8. Visualisasi Jumlah kasir dan Utilitas
 
 ```r
 {r}
@@ -501,33 +501,58 @@ Penjelasan:
 
 ## 9. Insight kuat untuk institusi (ringkasan konsep)
 
-Dari semua langkah di atas, insight yang bisa kamu tulis di laporan:
+Dari seluruh analisis, beberapa insight penting yang bisa ditulis di laporan:
 
 1. **Poisson & NHPP**
 
-   * Kedatangan pelanggan per slot 5 menit konsisten dengan asumsi Poisson (mean ~ variance).
-   * Profil λ(t) per slot menunjukkan **jam puncak** di tengah interval; ini adalah **window kritis** yang harus diintervensi (kanopi, ekstra kasir, pre-order, jalur khusus).
+   * Kedatangan pelanggan per slot 5 menit konsisten dengan asumsi **proses Poisson/NHPP**: rata-rata dan varians jumlah pelanggan per slot berada pada orde yang sama.
+   * Profil ( \lambda(t) ) per slot menunjukkan adanya **jam puncak** di tengah interval pengamatan. Slot inilah yang menjadi **window kritis** yang harus diintervensi (misalnya dengan penambahan kasir sementara, pengaturan alur antrean, atau sistem pre-order).
 
 2. **Dampak hujan**
 
-   * λ hujan lebih rendah sekitar 30 persen. Ini bukan hanya "sepi", tetapi penurunan demand yang signifikan.
-   * Risiko: pendapatan UMKM turun, stok harian perlu disesuaikan.
+   * Pada kondisi hujan, laju kedatangan pelanggan ( \lambda ) turun sekitar **30 persen** dibanding kondisi tidak hujan. Jadi hujan bukan sekadar “lebih sepi”, tapi memang terjadi **penurunan demand yang signifikan**.
+   * Konsekuensinya, **pendapatan harian UMKM berpotensi turun**, sehingga stok bahan dan persiapan produksi perlu disesuaikan dengan prediksi cuaca.
 
-3. **M/M/2 dan utilisasi**
+3. **M/M/c, kondisi lapangan (2 kasir), dan utilisasi**
 
-   * Dengan 2 kasir, sistem lebih stabil dibanding M/M/1
-   * Pada hari tidak hujan, ρ masih mungkin tinggi → perlu monitoring utilisasi
-   * Analisis menunjukkan apakah 2 kasir cukup atau perlu penambahan
+   * Di lapangan terdapat **2 kasir**, dengan waktu layanan rata-rata sekitar **1,5 menit/pelanggan**. Ini setara dengan kapasitas pelayanan per kasir (\mu \approx 40) pelanggan/jam, sehingga kapasitas total dua kasir adalah sekitar **80 pelanggan/jam**.
+   * Dari hasil estimasi, laju kedatangan pada jam sibuk sekitar ( \lambda \approx 119 ) pelanggan/jam. Dengan rumus
+     [
+     \rho = \frac{\lambda}{c\mu},
+     ]
+     diperoleh:
+
+     * **c = 2 kasir (kondisi aktual)** → ( \rho \approx 1{,}49 ) atau sekitar **149 persen**. Artinya, **secara teori M/M/2 tidak stabil** di jam puncak: laju kedatangan lebih besar daripada kapasitas layanan, sehingga antrian cenderung menumpuk.
+     * **c = 3 kasir** → ( \rho \approx 0{,}99 ) (hampir 100 persen): sistem mulai stabil tetapi kasir bekerja pada beban yang sangat tinggi.
+     * **c = 4–5 kasir** → ( \rho \approx 74–60 persen ): sistem stabil dengan buffer yang lebih aman, antrian jauh lebih terkendali.
+   * Grafik utilisasi yang dihasilkan memperlihatkan pola ini secara visual: batang untuk c = 1–2 berada jauh di atas 100 persen (overload), sedangkan c = 4–5 berada di zona aman.
 
 4. **Analisis sensitivitas staffing**
 
-   * Dengan target SLA (misal Wq ≤ 5 menit), bisa dihitung secara eksplisit **berapa kasir minimal** yang dibutuhkan
-   * Ini bisa diterjemahkan menjadi:
-     * Staffing fleksibel berdasarkan prediksi cuaca
-     * Sistem shift kasir selama jam puncak
-     * Optimalisasi layout untuk efisiensi pelayanan
+   * Dengan menetapkan target **SLA waktu tunggu rata-rata di antrian** (misalnya ( W_q \le 5 ) menit), model M/M/c memungkinkan kita menghitung **jumlah kasir minimal yang diperlukan pada jam puncak**.
+   * Untuk parameter ( \lambda \approx 119 ) dan ( \mu \approx 40 ), perhitungan menunjukkan bahwa:
+
+     * **2 kasir (kondisi saat ini)** belum cukup untuk mencapai target SLA di jam sibuk.
+     * **Penambahan kasir menjadi sekitar 4–5 orang** pada window puncak jauh lebih realistis untuk menurunkan waktu tunggu ke kisaran beberapa menit.
+   * Hasil ini dapat diterjemahkan menjadi:
+
+     * **Staffing fleksibel**: 2 kasir pada jam sepi, naik menjadi 3–5 kasir saat jam puncak.
+     * **Sistem shift kasir** yang khusus diaktifkan di slot waktu dengan λ tertinggi.
+     * **Optimalisasi layout** (jalur antrean, pemisahan antrean “pesan + bayar” dan “bayar saja”) untuk mengurangi waktu layanan efektif per pelanggan.
 
 5. **Rekomendasi berbasis data**
-   * **Operasional**: Penambahan kasir sementara selama slot kritis
-   * **Teknologi**: Implementasi sistem pre-order untuk meratakan beban
-   * **Manajemen**: Kebijakan staffing adaptif berdasarkan prediksi cuaca dan hari perkuliahan
+
+   * **Operasional**
+
+     * Menambahkan kasir sementara atau mengaktifkan kasir cadangan saat jam puncak agar utilisasi turun dari >140 persen menjadi di bawah 100 persen.
+     * Mengatur kembali prosedur pelayanan (misalnya kasir khusus non-tunai atau khusus top-up) untuk mempercepat rata-rata layanan.
+   * **Teknologi**
+
+     * Mengembangkan atau memanfaatkan **sistem pre-order** (pesan dulu, bayar di kasir cepat) untuk meratakan beban layanan kasir sepanjang jam operasional.
+   * **Manajemen**
+
+     * Menyusun **kebijakan staffing adaptif** yang mempertimbangkan:
+
+       * pola kedatangan ( \lambda(t) ) (hari dan jam sibuk),
+       * serta prediksi cuaca (hujan vs tidak hujan),
+         sehingga jumlah kasir tidak berlebihan di jam sepi tetapi **cukup kuat menahan lonjakan antrian** di jam puncak.
